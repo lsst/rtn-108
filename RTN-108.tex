@@ -9,7 +9,7 @@
 %\input{aglossary.tex}
 %\makeglossaries
 
-\title{CCD Height Effects on Rubin PSFs}
+\title{Impact of CCD Non-Flatness In Rubin LSSTCam PSF Measurements and Modeling}
 
 % This can write metadata into the PDF.
 % Update keywords and author information as necessary.
@@ -33,7 +33,7 @@
 % \setDocCurator{The Curator of this Document}
 
 \setDocAbstract{%
-Modeling the point-spread function (PSF) precisely is essential for many-- if not all-- science cases with the Rubin Observatory. In this work, we inspect a PSF residual pattern present in both Rubin's ComCam and LSSTCam observations. We show that it is likely due to effects from CCD non-flatness, and elaborate on the mechanism by which height offsets could influence the PSF. Finally, we demonstrate that incorporating height information into PSF modeling greatly reduces the observed residual.
+Modeling the point-spread function (PSF) precisely is essential for achieving optimal science with the Rubin Observatory. In this work, we inspect a PSF residual pattern present in both Rubin's ComCam and LSSTCam observations. We show that it is likely due to effects from CCD non-flatness and explain the physical mechanism by which height offsets could influence the PSF. Finally, we demonstrate that incorporating height information into PSF modeling greatly reduces the observed residual.
 }
 
 % Change history defined here.
@@ -51,6 +51,37 @@ Modeling the point-spread function (PSF) precisely is essential for many-- if no
 \maketitle
 % Frequently for a technote we do not want a title page  uncomment this to remove the title page and changelog.
 % use \mkshorttitle to remove the extra pages
+\section{Overview}
+
+The Vera Rubin Observatory's (\textit{Rubin}) Legacy Survey of Space and Time (LSST) will probe new depths of the Universe through its 10-year, $\sim 18,000$ square degree survey of the Southern night sky. 
+%cite Ivezic 2019
+LSST will make observations of objects with magnitude as faint as $m_{\rm AB}\sim27$ in \textit{ugrizy} imaging. 
+It is expected to observe billions of galaxies, whose shapes and sizes will be used to create the largest weak gravitational lensing survey catalog in history. % cite Bianco 2022
+
+\textit{Rubin}'s incredible science goals are made possible by the impressive LSST Camera, a 3.2 Gigapixel camera that images 9.8 square degrees of sky with each exposure. The camera focal plane is made up of $189$ $4$K$\times 4$K CCDs, with 0.2 arcsecond pixels capable of delivering images that are both wide and high-resolution.
+The high precision of LSSTCam comes with corresponding challenges; an extremely sensitive instrument requires extremely controlled calibrations.
+
+The point-spread function, the transformation of a star's delta-function image on the sky to its spread out appearance in an image, is a well-known source of systematic errors for imaging surveys.
+The LSST Science Requirements Document has stringnet requirements on knowledge of the PSF to enable the Dark Energy Science Collaboration's science goals.
+% cite SRD, DESC, and put actual numbers here
+Imperfect PSF modeling can introduce errors in shape measurements, star-galaxy separation, photometric redshift estimation, and more.
+Because of this, PSF model validation has been a priority for Rubin commissioning science. 
+
+In this paper, we describe a PSF residual pattern due to CCD non-flatness that has been observed in Rubin ComCam and LSSTCam data. In Section \ref{sec: psf}, we outline the formalism for measuring and modeling point-spread function and discuss the current performance of Rubin PSFs. The observed PSF residual and its origin are discussed in Section \ref{sec:heights}. Our efforts in modeling the height effects and the results thereof are presented in Section \ref{sec:zmodel}. Finally, we summarize our findings and discuss future developments in Section \ref{sec:summary}. 
+
+\section{The Point-Spread Function} \label{sec:psf}
+\subsection{Modeling and Measurement}
+\subsection{Rubin PSF Performance}
+
+\section{Height Offsets in LSSTCam CCDs}\label{sec:heights}
+\subsection{Summary of the effect}
+\subsection{Impact on PSFs}
+
+\section{Incorporating Height into PSF Modeling}\label{sec:zmodel}
+\subsection{Methods}
+\subsection{Results}
+
+\section{Summary and Discussion}\label{sec:summary}
 
 % ADD CONTENT HERE
 % You can also use the \input command to include several content files.
