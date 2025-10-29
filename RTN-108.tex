@@ -67,21 +67,71 @@ The LSST Science Requirements Document has stringnet requirements on knowledge o
 Imperfect PSF modeling can introduce errors in shape measurements, star-galaxy separation, photometric redshift estimation, and more.
 Because of this, PSF model validation has been a priority for Rubin commissioning science. 
 
-In this paper, we describe a PSF residual pattern due to CCD non-flatness that has been observed in Rubin ComCam and LSSTCam data. In Section \ref{sec: psf}, we outline the formalism for measuring and modeling point-spread function and discuss the current performance of Rubin PSFs. The observed PSF residual and its origin are discussed in Section \ref{sec:heights}. Our efforts in modeling the height effects and the results thereof are presented in Section \ref{sec:zmodel}. Finally, we summarize our findings and discuss future developments in Section \ref{sec:summary}. 
+In this paper, we describe a PSF residual pattern due to CCD non-flatness that has been observed in Rubin ComCam and LSSTCam data. 
+In Section \ref{sec: psf}, we outline the formalism for measuring and modeling point-spread function and discuss the current performance of Rubin PSFs.
+The observed PSF residual and its origin are discussed in Section \ref{sec:heights}.
+Our efforts in modeling the height effects and the results thereof are presented in Section \ref{sec:zmodel}. 
+Finally, we summarize our findings and discuss future developments in Section \ref{sec:summary}. 
 
 \section{The Point-Spread Function} \label{sec:psf}
 \subsection{Modeling and Measurement}
+\begin{enumerate}
+    \item PSF shows how points spread out on images
+    \item general PSF form
+    \item in practice, we measure it through moments of images
+    \item then in Rubin we use Piff to model it. describe briefly Piff process
+\end{enumerate}
 \subsection{Rubin PSF Performance}
+\begin{enumerate}
+    \item We characterize the performance of the PSF model by looking at residuals; we measure sources, draw the PSF model at those positions, and see how different they are
+    \item we can look at a few things, ellipcitities, size, normalized size statistics
+    \item Figures showing some residuals and a summary of those findings. Clearly there is something going on in the sizes, we think we can attribute this to heights.
+\end{enumerate}
 
 \section{Height Offsets in LSSTCam CCDs}\label{sec:heights}
+
 \subsection{Summary of the effect}
+\begin{enumerate}
+    \item Some background info about the CCDs, manufacturing, etc.
+    \item We knew the CCDs would be warped, camera team did some metrology tests to learn the ccd non-flatness
+    \item description of Andy's work, and citations
+    \item include maps (w/ permission to reprint)
+    \item the detector heights appear highly correlated with the residuals, show the map comparisons and correlation plots maybe
+    \item it's especially present in ITL, we think bc the Piff model is able to scoop up the height effects for E2V since theyre linear
+\end{enumerate}
+
 \subsection{Impact on PSFs}
+\begin{itemize}
+    \item maybe show a little math here-- lsst beam speed, being offset from ideal focus makes the size spread out
+    \item batoid model, using rays, show the spreading out of the beams and the FWHM(z) plots
+    \item discussion of quadratic form, if we are in perfect focus then heights might have less of an impact, but we think we are not living at the bottom of that function
+    \item we used z4 from AOS to estimate focus level, and broke the residuals into bins of z4-visit. better-focus images show less residual pattern, but also we z4=0 does not seem to be perfect focus. either we are a little out of focus, or z4 is not a great estimate... future work on this
+\end{itemize}
 
 \section{Incorporating Height into PSF Modeling}\label{sec:zmodel}
+
 \subsection{Methods}
+\begin{enumerate}
+    \item our idea was to use the physical height map in the PSF model to fit out height effects
+    \item piff stars usually get an x and y position, now we added a 'dz' position from interpolating the height map
+    \item we expanded the usual piff model to include terms up to second order in dz
+\end{enumerate}
+
 \subsection{Results}
+\begin{enumerate}
+    \item then we re-ran psf characterization on a bunch of visits
+    \item the overall residual is reduced, but not totally gone.
+    \item we think maybe the remaining residuals are from something else (stress pattern) and we think that including the local WCS instead of the global might make this go away?
+\end{enumerate}
 
 \section{Summary and Discussion}\label{sec:summary}
+\begin{enumerate}
+    \item We looked at psf residuals and identified an effect that we think is from heights
+    \item we tried to solve the problem, with moderate success
+    \item we will try more solutions, like including the stress pattern in the wcs
+    \item we can also just go to 4th order in position and that does better
+    \item or we can also get a better idea of where in focus is and see if we can improve control of focus when heights get incorporated into AOS too.
+\end{enumerate}
 
 % ADD CONTENT HERE
 % You can also use the \input command to include several content files.
