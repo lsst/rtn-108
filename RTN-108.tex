@@ -3,7 +3,7 @@
 
 % Package imports go here.
 
-% Local commands go here.
+\newcommand{\Katherine}[1]{{\textcolor{red}{\bfseries{[#1]}}}}
 
 %If you want glossaries
 %\input{aglossary.tex}
@@ -15,12 +15,11 @@
 % Update keywords and author information as necessary.
 \hypersetup{
     pdftitle={CCD Height Effects on Rubin PSFs},
-    pdfauthor={KatherineLaliotis},
+    pdfauthor={Katherine Laliotis},
     pdfkeywords={}
 }
 
 % Optional subtitle
-\newcommand{\Katherine}[1]{{\textcolor{red}{\bfseries{[#1]}}}}
 % \setDocSubtitle{A subtitle}
 
 \input{authors}
@@ -103,10 +102,10 @@ For \textit{LSST}, this PSF modeling is done with \texttt{ PIFF}: PSF's In the F
 An in-depth description of \texttt{PIFF} can be found in \citet{2021MNRAS.501.1282J}; here we describe the steps briefly.
 
 \texttt{PIFF} Models the PSF by first selecting a set of stars in each detector image that meet some set of criteria, including a S/N cut, a roundness cut to ensure a pure star sample, or stars too close to the edges. 
-Selection cuts will be modified in the future to achieve the ideal sample for PSF modeling-- for now, they are simply \Katherine{figure out what they are?} 
+Selection cuts will be modified in the future to achieve the ideal sample for PSF modeling-- at present, there is an initial star selection in the LSST DM pipeline but no additional selections applied in \texttt{PIFF}.
 A subset of stars is removed from the sample and marked as ``reserved'' to be used for testing the model later.
 Next, \texttt{PIFF} takes the selected stars and fits a model to estimate the best-fit PSF parameters at each position based on the stars' properties.
-This model is then interpolated across the image in a maximum-likelihood way. Finally, the current sample of stars is compared against the best-fit model, outliers are removed, and the model fitting process starts again.
+This model is then interpolated across the image in a maximum-likelihood way. Finally, the current sample of stars is compared against the best-fit model, outliers are removed via chi-squared rejection, and the model fitting process starts again.
 The algorithm iterates until it has converged on a PSF model.
 
 Because we want to ultimately remove the PSF convolution to obtain ``true'' images, it is essential that the PSF is accurate to a high precision.
@@ -164,25 +163,24 @@ that quantifies the difference in a star's measured size from the mean size of s
 % \end{enumerate}
 
 In this TechNote, we present PSF residuals from the commissioning campaign with LSSTCam. 
-The data used for this work are the single visit image PSF measurements on visits from June 4, 2025 through August 18, 2025.
+The data used for this work are the $2,248$ single visit image PSF measurements on visits from June 4, 2025 through August 18, 2025.
 They were processed in the Week $33$ DRP run at USDF at SLAC.
-The total number of stars included in the analysis is $5.8\times10^6$.
+The total number of stars included in the analysis is $5.8\times10^6$. 
 
 First, we select stars from the visit images using the flag \texttt{extendedness} $=0$ and \texttt{calib\_psf\_used} $=1$, filtering down to stars that were used to fit the PSF and stars that meet a cut for roundness. 
 We then calculate PSF residuals for each star in each visit image contained in the collection.
-Using \texttt{treegp}\footnote{https://github.com/PFLeget/treegp}, we take the median PSF residual in each position on the focal plane, and construct a heatmap image showing the median PSF residuals from the set of visits.
 
 \begin{figure}
     \centering
     \includegraphics[width=0.9\linewidth]{Figures/ffp_T_resids.png}
-    \caption{Caption}
+    \caption{Median PSF size residuals. \textit{Left:} Median $\delta T$ residual. \textit{Right:} Median $\delta T/T$ residual. Coherent patterns are visible in all CCDs in $\delta T$; ITL sensors show the ``ITL blob'' behavior, while E2V sensors show linear variations. The model-subtracted residuals show that the PSF model incorporates the linear variations in E2V sensors but struggles fitting the ITL blobs, resulting in the concentric ring pattern seen in ITL sensor residuals.}
     \label{fig:ffp_T_resids}
 \end{figure}
 
 \begin{figure}
     \centering
     \includegraphics[width=0.9\linewidth]{Figures/ffp_e_resids.png}
-    \caption{Caption}
+    \caption{Median PSF shape residuals. \textit{Left:} $\delta e_1$  residual. \textit{Right:} $\delta e_2$  residual. Ellipticity residuals show less conherent patterns and have a smaller overall magnitude. Effects from vignetting can be seen on the edges of the outermost CCDs. }
     \label{fig:ffp_e_resids}
 \end{figure}
 
@@ -191,26 +189,26 @@ All four plots are normalized to the same scale, $\pm 0.01$.
 While there are not clear residual patterns in the ellipticity residuals, the PSF size residuals show some interesting behaviors. 
 Comparing against the LSST Focal Plane Engineering map \citep{CTN-001}, we see clearly that there is a distinction between the behaviors of the E2V and ITL type sensors. 
 
+The left panel of \ref{fig:ffp_T_resids}, we show our PSF-agnostic median PSF size residual. 
+In this image, we see PSF residual patterns in not only the ITL sensors, but in the E2V sensors as well, although the patterns remain distinct. 
+Looking at this image, we identified a potential cause for the PSF residuals: height offsets on the LSSTCam CCDs.
+A side-by-side comparison of the PSF residual map with measured heights of the CCDs taken in lab shows an undeniable correlation between the two measurements (see Figure \ref{fig:comparison_ffp}, which will be discussed in the following section). 
+PSF modeling assumes that the stars fall onto flat CCDs.
+Non-flat detectors could plausibly be the cause of the residual patterns we observe here.
+
+
 \begin{figure}
     \centering
-    \includegraphics[width=0.5\linewidth]{}
-    \caption{Caption}
+    \includegraphics[width=0.9\linewidth]{Figures/det_stack_dT.png}
+    \caption{Median $\delta T$ residuals for stacked ITL (\textit{left}) and E2V (\textit{right}) detectors. In E2V sensors, the linear trends mostly cancel out when we take the median. For ITL, an overall blob pattern emerges.}
     \label{fig:det_resids}
 \end{figure}
 
 Figure \ref{fig:det_resids} shows a similar statistic of median PSF residuals, but rather than stacking full focal plane images, stacking together detectors of the same type.
 The ITL detectors show the effect we refer to as the ``ITL blob,'' a roughly round pattern of strong negative residuals in the center and strong positive residuals surrounding.
 The E2V sensors show less of an overall effect. 
-However, the known E2V midline-break feature is visible as a discontinuity across the horizontal band bisecting the image. 
-We do not believe this feature to be real, as the E2V midline is masked in reality.
-The feature we see here is a result of the binning in the image filling in the center with nearby data.
+We attribute this to the fact that the E2V residual pattern has less of a consistent single behavior, so the trends cancel out when we take the median over all detectors.
 
-The left panel of \ref{fig:ffp_T_resids}, we show our PSF-agnostic median PSF size residual. 
-In this image, we see PSF residual patterns in not only the ITL sensors, but in the E2V sensors as well, although the patterns remain distinct. 
-Looking at this image, we identified a potential cause for the PSF residuals: height offsets on the LSSTCam CCDs.
-A side-by-side comparison of the PSF residual map with measured heights of the CCDs taken in lab shows an undeniable correlation between the two measurements. 
-PSF modeling assumes that the stars fall onto flat CCDs.
-Non-flat detectors could plausibly be the cause of the residual patterns we observe here.
 
 \section{Height Offsets in LSSTCam CCDs}\label{sec:heights}
 
@@ -235,47 +233,52 @@ For example, \cite{RTN-095} showed that E2V sensors on average have a lower gain
 
 The ITL and E2V sensors exhibit physical differences as well. 
 As part of the requirements verification process, the LSSTCam focal plane underwent tests at SLAC to characterize the focal surface and make sure that requirements were being met.
-The camera team \Katherine{.. I still don't totally understand how the measurement worked-- ask Andy for help on this}
+Measurements were taken using a Keyence LK-H displacement sensor. 
+The sensors were set up in differential mode, so that sensors would simultaneously measure a CCD surface and a reference flat surface.
+The system achieves sub-micron accuracy.
+
 
 \begin{figure}
     \centering
     \includegraphics[width=0.9\linewidth]{Figures/metrology.png}
-    \caption{Caption}
+    \caption{Figure reprinted from \cite{Document-37242}; measured detector heights on LSSTCam Focal Plane.}
     \label{fig:metrology}
 \end{figure}
 
+Focal plane heights were measured several times in two temperature configurations, one ``warm'' and one ``cold.''
+The different scans are then stitched together into final measurement maps.
 In this work, we focus on the ``cold'' tests, which were run close to the nominal LSSTCam operating temperature of $-100$ C. 
 Figure \ref{fig:metrology} shows the full focal plane height measurements from cold metrology testing.
 Several effects stick out:
 \begin{itemize}
     \item In addition to detector-to-detector height differences, there are prominent height offsets within individual CCDs
     \item ITL sensors exhibit a characteristic bowing distortion
-    \item E2V sensors exhbit more linear height offsets
+    \item E2V sensors exhibit more linear height offsets
     \item Wavefront and guider sensors also exhibit height offsets
 \end{itemize}
 Heights in the CCDs are measured in the z plane in mm from peak-to-valley (P-V).
 The overall flatness of the focal plane is characterized in Document-37242 RMS and 90\% P-V width.
 In E2V sensors, the RMS P-V height is $3.44 \mu$m, and the 90\% width is $11.7\mu$m. 
-For ITLs, both measurments are larger, with RMS $4.84 \mu$m and $90\%$ width $15.43\mu$m. 
+For ITLs, both measurements are larger, with RMS $4.84 \mu$m and $90\%$ width $15.43\mu$m. 
 
 \begin{figure}
     \centering
     \includegraphics[width=0.9\linewidth]{Figures/ffp_comparison.png}
-    \caption{Caption}
+    \caption{Side-by-side comparison of $\delta T$ residuals and the focal plane height map. The correlation between the two maps is distinct. Detectors 16 (ITL) and 96 (E2V) are highlighted in green as strong examples of height map - PSF residual correlations.}
     \label{fig:comparison_ffp}
 \end{figure}
 
 \begin{figure}
     \centering
     \includegraphics[width=0.9\linewidth]{Figures/correlation.png}
-    \caption{Caption}
+    \caption{Correlation between PSF size residuals and CCD height offset $\delta z$ interpolated onto the same grid. A strong correlation is clear.}
     \label{fig:correlation}
 \end{figure}
 
 Comparing the focal plane height map with the PSF size residuals, a correlation can be observed.
 The ITL sensors in particular show a ``blob'' behavior in the residuals that seems to correspond to the bowed detector shapes observed in the height map.
 To make a more direct comparison between the two maps, since the PSF measurement is plotted on individual detectors, we re-plotted the surface metrology map with each detector height offset renormalized to be centered around its median value.
-The comparison in Figure \ref{fig:comparison_ffp} shows unmistakeable correlation between the two patterns.
+The comparison in Figure \ref{fig:comparison_ffp} shows unmistakable correlation between the two patterns.
 The ITL blobs trace not only the size but also the magnitude of the height variations, and the E2V sensors show tilts in the same directions as the gradients in size residuals do.
 We conclude that the PSF size residual is almost certainly caused by the CCDs' local non-flatness. 
 We additionally include a plot showing the correlation between PSF size offset and detector height interpolated to star position in Figure \ref{fig:correlation} to demonstrate the strong correlation.
@@ -299,7 +302,7 @@ Second, the estimation was made assuming that LSSTCam would be operating at idea
 \begin{figure}
     \centering
     \includegraphics[width=0.9\linewidth]{Figures/fwhm_z.png}
-    \caption{Caption}
+    \caption{\textit{Left: }Model prediction of PSF size $T$ as a function of focal plane offset from perfectly flat, plotted at several different radii on the focal plane. \textit{Right:} Model prediction of PSF size change expected from shifting the focal plane from perfect flatness. We see the expected quadratic behavior, and note that the range of height offsets in the ``flat'' region of the quadratic is smaller than the RMS height offset in the focal plane. }
     \label{fig:fwhm_z}
 \end{figure}
 
@@ -324,7 +327,7 @@ This is an imperfect estimation, but in principle should indicate a general amou
 \begin{figure}
     \centering
     \includegraphics[width=0.95\linewidth]{Figures/z4_bins.png}
-    \caption{Caption}
+    \caption{Median PSF size residual $\delta T$ with visits sorted into three bins of mean defocus $\langle z_4 \rangle$. As expected, the sign of the residuals flips between the negative and positive $z_4$ bins. }
     \label{fig:z4_bins}
 \end{figure}
 
@@ -346,13 +349,23 @@ Indeed, a histogram of the $\langle z_4 \rangle$ values in this dataset shows a 
 To mitigate the impact of CCD non-flatness in PSFs, we incorporated height offsets into the PSF model.
 We used the lab test data discussed in Section \ref{sec:heights} as an input map.
 For each star in the \texttt{PIFF} selected catalog, in addition to appending the star's position as properties to be used for PSF modeling, we interpolated the height map data to the position of the star on the focal plane and appended an additional model property, $dz$. 
-We perform the interpolation using \texttt{SCIPY}\footnote{https://scipy.org/} KNN algorithm with \Katherine{N neighbors}.
+We perform the interpolation using \texttt{SCIPY}\footnote{https://scipy.org/} KNN algorithm with 3 neighbors.
 
-\Katherine{I need to ask Mike about the functional form of the Piff model and what it looks like to add dz in...}
+
 The current model fit by \texttt{PIFF} in the \textit{LSST} image processing pipeline fits a second order polynomial in detector $x,y$ coordinates:
+\begin{equation}\label{eq:pipeline_piff_model}
+    f = f_0 + A x + B x^2 + C y + D y^2 + E x y
+\end{equation}
+
+Our modified version instead fits the model
+\begin{equation}\label{eq:dz_piff_model}
+    f = f_0 + A x + B x^2 + B y + D y^2 + E dz + G dz^2 
+    + H x y + J x dz + K y dz
+\end{equation}
 
 We reprocessed the visits in the dataset discussed in Section \ref{sec:psf} using our new \texttt{PIFF} model including the height parameter.
 After determining the PSFs, we also ran our new dataset through the single-visit characterization pipeline tasks, to recover the same visit-level object catalog used in Section \ref{sec:psf}, but with measurements from our new model.
+We examine the results of applying our new PSF model in the following section.
 
 \subsection{Results}
 % \begin{enumerate}
@@ -360,22 +373,31 @@ After determining the PSFs, we also ran our new dataset through the single-visit
 %     \item we think maybe the remaining residuals are from something else (stress pattern) and we think that including the local WCS instead of the global might make this go away?
 % \end{enumerate}
 
-\begin{figure}
-    \centering
-    \includegraphics[width=0.9\linewidth]{Figures/dz_ffp_resids.png}
-    \caption{Caption}
-    \label{fig:dz_ffp_resids}
-\end{figure}
-
-Figure \ref{fig:dz_ffp_resids} shows the PSF model residuals for the $dz$-inclusive \texttt{PIFF} model in two detectors that showed severe height offsets: detector 16 (ITL) and detector 96 (E2V).
+Figure \ref{fig:dz_ffp_resids} shows the PSF model $\delta T/T$ residuals for the $dz$-inclusive \texttt{PIFF} model in two detectors that showed severe height offsets: detector 16 (ITL) and detector 96 (E2V).
 The two detectors shown here are outlined in green in Figure \ref{fig:ffp_T_resids} for comparison.
+We also include Figure \ref{fig:dm_ffp_resids} for reference, to highlight the change in residuals from inclusion of the height parameter in the PSF model. 
 There is little change in the E2V detector; because the E2V height offsets are linear, the x-y plane PSF fitting model was already incorporating the height effects well enough.
 In the ITL sensor, we see a clear reduction of the size residual that was observed previously. 
 Note that the scale of this figure is the same as in Figure \ref{fig:ffp_T_resids}.
-Comparing the two, the patterns are certainly fainter in the new model residuals.
+Comparing Figures \ref{fig:dm_ffp_resids} and \ref{fig:dz_ffp_resids}, the patterns are certainly fainter in the new model residuals.
 
 However, it is clear that incorporating heights into the PSF model does not completely remove the PSF residuals. 
-Some residual pattern remains in the ITl sensors, though we note that its shape has changed slightly from the ``ITL blobs'' previously seen.
+Some residual pattern remains in the ITl sensors, though we note that its shape has changed slightly from the ``ITL blobs'' previously seen. 
+Possible explanations for this remaining residual are discussed in the following section. 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/det_resids_regular.png}
+    \caption{Median Piff PSF residual $\delta T/T$ in detectors 96 and 16, using the pipeline Piff (model given by equation \ref{eq:pipeline_piff_model}).}
+    \label{fig:dm_ffp_resids}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/dz_ffp_resids.png}
+    \caption{Median Piff PSF residual $\delta T/T$ in detectors 96 and 16, using the height-inclusive Piff (model given by equation \ref{eq:dz_piff_model}).}
+    \label{fig:dz_ffp_resids}
+\end{figure}
 
 \section{Summary and Discussion}\label{sec:summary}
 % \begin{enumerate}
