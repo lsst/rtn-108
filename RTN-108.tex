@@ -1,39 +1,73 @@
-\documentclass[OPS,lsstdraft,authoryear,toc]{lsstdoc}
-\input{meta}
+\documentclass[SE,lsstdraft,authoryear,toc]{lsstdoc}
+%\input{meta}
+
+% Package imports go here.
+\usepackage{graphicx} 
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{url}
+\usepackage{siunitx}
+\usepackage{listings}
+\usepackage{subcaption}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
 
 % Package imports go here.
 
-% Local commands go here.
+\newcommand{\Katherine}[1]{{\textcolor{red}{\bfseries{[#1]}}}}
 
 %If you want glossaries
 %\input{aglossary.tex}
 %\makeglossaries
 
-\title{CCD Height Effects on Rubin PSFs}
+\title{Impact of CCD Non-Flatness In Rubin LSSTCam PSF Measurements and Modeling}
 
 % This can write metadata into the PDF.
 % Update keywords and author information as necessary.
 \hypersetup{
     pdftitle={CCD Height Effects on Rubin PSFs},
-    pdfauthor={KatherineLaliotis},
+    pdfauthor={Katherine Laliotis},
     pdfkeywords={}
 }
 
 % Optional subtitle
 % \setDocSubtitle{A subtitle}
 
-\input{authors}
+% \input{authors}
 
 \setDocRef{RTN-108}
 \setDocUpstreamLocation{\url{https://github.com/lsst/rtn-108}}
 
-\date{\vcsDate}
+\date{\today}
 
 % Optional: name of the document's curator
 % \setDocCurator{The Curator of this Document}
 
 \setDocAbstract{%
-Modeling the point-spread function (PSF) precisely is essential for many-- if not all-- science cases with the Rubin Observatory. In this work, we inspect a PSF residual pattern present in both Rubin's ComCam and LSSTCam observations. We show that it is likely due to effects from CCD non-flatness, and elaborate on the mechanism by which height offsets could influence the PSF. Finally, we demonstrate that incorporating height information into PSF modeling greatly reduces the observed residual.
+Modeling the point-spread function (PSF) precisely is essential for achieving optimal science with the Rubin Observatory. In this work, we inspect a PSF residual pattern present in both Rubin's ComCam and LSSTCam observations. We show that it is likely due to effects from CCD non-flatness and explain the physical mechanism by which height offsets could influence the PSF. Finally, we demonstrate that incorporating height information into PSF modeling greatly reduces the observed residual.
 }
 
 % Change history defined here.
@@ -49,11 +83,398 @@ Modeling the point-spread function (PSF) precisely is essential for many-- if no
 
 % Create the title page.
 \maketitle
-% Frequently for a technote we do not want a title page  uncomment this to remove the title page and changelog.
-% use \mkshorttitle to remove the extra pages
 
-% ADD CONTENT HERE
-% You can also use the \input command to include several content files.
+\section{Overview}
+
+The Vera Rubin Observatory's (\textit{Rubin}) Legacy Survey of Space and Time (LSST) will probe new depths of the Universe through its 10-year, $\sim 18,000$ square degree survey of the Southern night sky \citep{2019ApJ...873..111I}. 
+LSST will make observations of objects with magnitude as faint as $m_{\rm AB}\sim27$ in \textit{ugrizy} imaging. 
+It is expected to observe billions of galaxies, whose shapes and sizes will be used to create the largest weak gravitational lensing survey catalog in history \citep{2022ApJS..258....1B} 
+
+\textit{Rubin}'s incredible science goals are made possible by the impressive LSST Camera, a 3.2 Gigapixel camera that images 9.8 square degrees of sky with each exposure. The camera focal plane is made up of $189$ $4$K$\times 4$K CCDs, with 0.2 arcsecond pixels capable of delivering images that are both wide and high-resolution.
+The high precision of LSSTCam comes with corresponding challenges; an extremely sensitive instrument requires extremely controlled calibrations.
+
+The point-spread function, the transformation of a star's delta-function image on the sky to its spread out appearance in an image, is a well-known source of systematic errors for imaging surveys.
+The LSST Science Requirements Document has stringent requirements on knowledge of the PSF to enable the Dark Energy Science Collaboration's science goals \citep{LPM-17, SMTN-014}.
+% put actual numbers here
+Imperfect PSF modeling can introduce errors in shape measurements, star-galaxy separation, photometric redshift estimation, and more.
+Because of this, PSF model validation has been a priority for Rubin commissioning science. 
+
+In this paper, we describe a PSF residual pattern due to CCD non-flatness that has been observed in Rubin ComCam and LSSTCam data. 
+In Section \ref{sec:psf}, we outline the formalism for measuring and modeling point-spread function and discuss the current performance of Rubin PSFs.
+The observed PSF residual and its origin are discussed in Section \ref{sec:known-effects}.
+Our efforts in modeling the height effects and the results thereof are presented in Section \ref{sec:zmodel}. 
+Finally, we summarize our findings and discuss future developments in Section \ref{sec:summary}. 
+
+\section{The Point-Spread Function} \label{sec:psf}
+\subsection{Modeling and Measurement}
+
+The point-spread function generally describes how a point source in the sky transforms into an image on a detector. The brightness profile of the object in sky coordinates $I(u,v)$ is becomes a smeared out image in detector coordinates $I(x,y)$ via a transformation
+\begin{equation}
+\begin{vmatrix}
+    du/dx & dv/dx\\
+    du/dy & dv/dy
+\end{vmatrix}
+\end{equation}
+applied to the image. 
+The PSF in general accounts for all potential sources of image ``smearing''-- atmospheric, optical, and detector-level effects all contribute to the full PSF. 
+
+Stars and galaxies in astronomical images can be modeled as their true shapes convolved with the PSF.
+For precision measurements like those used in weak gravitational lensing (WL), it is imperative that we are able to recover those true shapes, rather than the smeared out ones on the detector.
+This necessitates the development of a model for the PSF, which can be deconvolved with astronomical images to recover objects' true shapes.
+
+Estimating the PSF in an image is a non-trivial task.
+For \textit{LSST}, this PSF modeling is done with \texttt{ PIFF}: PSF's In the Full FOV\footnote{https://github.com/rmjarvis/Piff}. 
+An in-depth description of \texttt{PIFF} can be found in \citet{2021MNRAS.501.1282J}; here we describe the steps briefly.
+
+\texttt{PIFF} Models the PSF by first selecting a set of stars in each detector image that meet some set of criteria, including a S/N cut, a roundness cut to ensure a pure star sample, or stars too close to the edges. 
+Selection cuts will be modified in the future to achieve the ideal sample for PSF modeling-- at present, there is an initial star selection in the LSST DM pipeline but no additional selections applied in \texttt{PIFF}.
+A subset of stars is removed from the sample and marked as ``reserved'' to be used for testing the model later.
+Next, \texttt{PIFF} takes the selected stars and fits a model to estimate the best-fit PSF parameters at each position based on the stars' properties.
+This model is then interpolated across the image in a maximum-likelihood way. Finally, the current sample of stars is compared against the best-fit model, outliers are removed via chi-squared rejection, and the model fitting process starts again.
+The algorithm iterates until it has converged on a PSF model.
+
+Because we want to ultimately remove the PSF convolution to obtain ``true'' images, it is essential that the PSF is accurate to a high precision.
+Measurements of small effects like weak gravitational lensing are highly sensitive to any errors in PSF modeling; deconvolving images by an incorrect PSF results in an incorrect true object being recovered and ultimately a biased analysis \citep{2023OJAp....6E...5M}.
+We characterize the performance of the PSF model by taking differences between measurements of observed stars in images and the PSF model interpolated at the positions of those stars.
+Rather than looking at the full difference images, it is useful to use summary statistics describing the overall shape of the stars-- both the observed $I_{\rm src}$ and the PSF model $I_{\rm PSF}$ version.
+
+Objects' shapes can be characterized through second moments of the brightness distribution in the image, $I(x,y)$.
+We use the adaptive weighted moments implemented in \texttt{galsim.hsm}\footnote{https://github.com/GalSim-developers/GalSim} \citep{2003MNRAS.343..459H} \citep{2005MNRAS.361.1287M} and defined by
+\begin{equation}
+    M_{ij} = 2 \frac{\int(\textbf{x}-\textbf{x}_0)_i (\textbf{x}-\textbf{x}_0)_jw(\textbf{x})I(\textbf{x})d^2(\textbf{x})}{\int w(\textbf{x})I(\textbf{x})d^2(\textbf{x})}
+\end{equation}
+where we have used $\textbf{x}_i=x, \textbf{x}_j=y$ and $w(\textbf{x})$ is a 2D weighting function in the form of an elliptical Gaussian whose shape is fit to have the least deviation from the object in a least-squares sense. 
+The second moments form a matrix
+\begin{equation}
+\textbf{M=}
+\begin{vmatrix}
+    M_{xx} & M_{xy}\\
+    M_{yx} & M{yy}
+\end{vmatrix}
+\end{equation}
+whose trace
+\begin{equation}
+    T=(M_{xx}+M{yy})
+\end{equation}
+is a scalar estimate of the PSF size. 
+
+In terms of the adaptive second moments, we then define the object's ellipticities as a spin-2 tensor $\textbf{e}=(e_1, e_2)$ with
+\begin{equation}
+    e_1 = (M_{xx}-M_{yy})/T
+\end{equation}
+\begin{equation}
+    e_2 = 2M_{xy}/T
+\end{equation}
+
+Using these quantities, we define the PSF residuals
+\begin{equation}
+    \delta T/T = (T_{\rm src} - T_{\rm PSF})/T_{\rm src}
+\end{equation}
+and
+\begin{equation}
+    \delta e_i = (e_{i, \rm src} - e_{i, \rm PSF}) .
+\end{equation}
+
+We also define a model-agnostic PSF residual
+\begin{equation}
+    \delta T = (T_{\rm src} - \langle T_{\rm src}\rangle_{\rm CCD, visit})
+\end{equation}
+that quantifies the difference in a star's measured size from the mean size of stars on its same detector, in the same exposure. 
+
+
+\section{Known Physical Effects in LSSTCam CCDs}\label{sec:known-effects}
+
+\subsection{CCD Height Offsets and Impact on PSFs}
+
+The LSSTCam consists of 189 thick, fully-depleted, back-illuminated Charge-Coupled Devices (CCDs). 
+The CCDs are arranged in 21 ``rafts,'' each consisting of a $3\times3$ grid of CCDs. 
+The focal plane has an additional 8 wavefront sensors and guider sensors mounted on the corners \citep{Document-16168}. 
+
+The CCDs in the focal plane are supplied by two different vendors: Rafts 01, 02, 03, 10, 20, 41, 42, and 43 are made up of CCDs from thr University of Arizona Imaging Technology Lab (hereafter ``ITL'' sensors). 
+The remaining sensors were manufactured by Teledyne e2v (hereafter ``E2V sensors'').
+The two different CCD types are known to exhibit different behaviors.
+For example, \cite{RTN-095} showed that E2V sensors on average have a lower gain, but larger magnitude brighter-fatter effect coefficients.
+
+The ITL and E2V sensors exhibit physical differences as well. 
+As part of the requirements verification process, the LSSTCam focal plane underwent tests at SLAC to characterize the focal surface and make sure that requirements were being met.
+Measurements were taken using a Keyence LK-H displacement sensor. 
+The sensors were set up in differential mode, so that sensors would simultaneously measure a CCD surface and a reference flat surface.
+The system achieves sub-micron accuracy.
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/metrology.png}
+    \caption{Figure reprinted from \cite{Document-37242}; measured detector heights on LSSTCam Focal Plane.}
+    \label{fig:metrology}
+\end{figure}
+
+Focal plane heights were measured several times in two temperature configurations, one ``warm'' and one ``cold.''
+The different scans are then stitched together into final measurement maps.
+In this work, we focus on the ``cold'' tests, which were run close to the nominal LSSTCam operating temperature of $-100$ C. 
+Figure \ref{fig:metrology} shows the full focal plane height measurements from cold metrology testing.
+Several effects stick out:
+\begin{itemize}
+    \item In addition to detector-to-detector height differences, there are prominent height offsets within individual CCDs
+    \item ITL sensors exhibit a characteristic bowing distortion
+    \item E2V sensors exhibit more linear height offsets
+    \item Wavefront and guider sensors also exhibit height offsets
+\end{itemize}
+Heights in the CCDs are measured in the z plane in mm from peak-to-valley (P-V).
+The overall flatness of the focal plane is characterized in Document-37242 RMS and 90\% P-V width.
+In E2V sensors, the RMS P-V height is $3.44 \mu$m, and the 90\% width is $11.7\mu$m. 
+For ITLs, both measurements are larger, with RMS $4.84 \mu$m and $90\%$ width $15.43\mu$m. 
+
+
+From the metrology measurements, the estimated relationship between height offset and PSF FWHM was .0033 ''/$\mu$m (\textbf{LCA-17}).
+Applying this to the $16\mu$m $95\%$ P-V width of the full focal plane, \textbf{LCA-18984} found that the expected FWHM contribution from detector non-flatness would be $0.053$''-- well below the $0.079$'' allotted FWHM error budget for assembly and alignment.
+
+However, this estimation relies on several key assumptions.
+First, the estimation of FWHM/mm conversion was made using a flat rectangular surface of best focus (\textbf{LCA-17}).
+This is not realistic for LSSTCam, which has a dish-shaped surface of best focus which is not constant across the focal plane.
+Second, the estimation was made assuming that LSSTCam would be operating at ideal focus.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/T_Heights.pdf}
+    \caption{\textit{Left: }Model prediction of PSF size $T$ as a function of focal plane offset from perfectly flat, plotted at several different radii on the focal plane. \textit{Right:} Model prediction of PSF size change expected from shifting the focal plane from perfect flatness. We see the expected quadratic behavior, and note that the range of height offsets in the ``flat'' region of the quadratic is smaller than the RMS height offset in the focal plane. }
+    \label{fig:fwhm_z}
+\end{figure}
+
+LSST's fast $f/1.2$ beam creates a very narrow range of $z$ for ideal focus. 
+Using the LSST optical model in Batoid\footnote{https://github.com/jmeyers314/batoid}, we calculated PSF FWHM as a function of focal plane height displacement at several different radii along the focal plane. 
+The results are shown in Figure \ref{fig:fwhm_z}.
+The function has the expected parabolic shape.
+The approximately flat section in the bottom of the parabola is narrow, spanning only about $0.5\mu$m total-- the RMS height offset in the focal plane.
+Additionally, the FWHM(z) function depends on radial position in the plane.
+Using a linear regression, we estimated the slope of the linear regime of the parabola to be $\approx0.01$''/$\mu$m. 
+For the 95\% width of the P-V heights, this would result in a $0.16$'' offset, exceeding the system requirement levels.
+
+\Katherine{Fix this section}
+During the commissioning of LSSTCam, work was ongoing to obtain consistent optimal focusing of the camera.
+The focus level in images ranged between nights, but on average focus was expected to be good.
+The large PSF offsets we see correlated with detector heights is indicative that the AOS focusing might not be optimized yet.
+
+To investigate this further, we broke up visit images into bins of average ``focus'' level. 
+We approximate focus level through the $4^{th}$ order Zernike polynomial, which represents defocus.
+We calculate $\langle z_4\rangle$ by taking the mean of the $z_4$ coefficients measured in each of the four wavefront sensors.
+This is an imperfect estimation, but in principle should indicate a general amount of defocus for each image.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.95\linewidth]{Figures/dT_ITL_z.pdf}
+    \caption{Median PSF size residual $\delta T$ with visits sorted into five bins of mean defocus $\langle z_4 \rangle$. As expected, the sign of the residuals flips between the negative and positive $z_4$ bins. }
+    \label{fig:z4_bins}
+\end{figure}
+
+Figure \ref{fig:z4_bins} shows the ITL $\delta T$ ``blob'' residual in five bins of $z_4$. 
+As expected from the quadratic behavior of the FWHM(z) function, we see that on opposite sides of focus the ITL blob pattern changes sign.
+We also see that the blob pattern grows fainter in the central 3 bins, but is not minimized in the middle bin.
+
+The model in Figure \ref{fig:fwhm_z} shows that in optimal focus, the FWHM changes much less as a function of z. 
+The gradient in Figure \ref{fig:z4_bins} shows that $z_4=0$ is not the minimum of the curve in real data; the blob pattern seems minimized around the fourth rather than third $z_4$ bin.
+This indicates that the camera is not yet achieving optimal focus.
+
+\subsection{CCD Stress Pattern and Impact on PSFs}
+% \begin{itemize}
+%     \item How the CCDs are mounted
+%     \item It is known that stress patterns can impact PSF-- DES
+%     \item We expect to see this pattern in PSFs: cite Esteves paper
+%     \item show derivation of intensity pattern relation to astrometric residuals
+% \end{itemize}
+Patterns of physical stress on CCDs can also have an impact on astrometric and PSF measurements. 
+\cite{2017PASP..129g4503B} showed that the ``tape bumps'' on the back of Dark Energy Camera (DECam) CCDs produced astrometric residuals in the positions of the bumps.
+Using a spot projector to simulate stars, \cite{Esteves2023} showed a similar effect in LSSTCam CCDs; astrometric and PSF size residuals both showed clear correlations with the back-of-CCD mounting structure, particularly for ITL sensors (Figures 3 and 6, \cite{Esteves2023}). 
+
+We model an astrometric displacement of a centroid at some position $r=x\hat{x}+y{\hat{y}}$ as $f(x) = x-x'$, $g(y) = y-y'$, where $x'$ and $y'$ refer to the positions of the actually observed centroid, $r'=x'\hat{x}+y'{\hat{y}}$.
+Further, we model the distortion of the spot's area as $w(x,y)$.
+The area distortion is related to the Jacobian determinant of the transformation from $r\rightarrow r'$:
+\begin{equation}
+    1+w(x, y) = \bigg|\frac{dA'}{dA}\bigg| = \bigg|\frac{d(x-f(x))d(y-g(y))}{dxdy}\bigg|
+\end{equation}
+
+where we have defined $f(x)$ and $g(y)$ as transformation functions fulfilling $x'=x-f(x)$ and $y'=y-g(y)$.
+To first order, this can be simplified down to 
+
+\begin{equation}
+    w(x,y) = -\partial_xf(x)-\partial_yg(y) = -\nabla \cdot F(x,y)
+\end{equation}
+
+for some separable $F(x,y)$ that represents the total astrometric distortion.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.95\linewidth]{Figures/stress_div.pdf}
+    \caption{Comparison of the CCD mounting structure (\textit{left}) with the divergence of the median astrometric residuals (\textit{right}).}
+    \label{fig:stress_comparison}
+\end{figure}
+
+Because area and PSF size are both second order, we use the divergence of the astrometry map as an approximate estimation of the CCD stress pattern's impact on PSFs. 
+We calculate the median astrometric offsets $\delta x$ and $\delta y$ from visit images in the collection, and use \texttt{Scipy}'s Sobel function as a partial derivative estimator to construct the divergence.
+Figure \ref{fig:stress_comparison} shows the resulting divergence map side-by-side with the mounting structure on the back of a single LSSTCam CCD.
+The correlation between the two patterns is clear; the dominant astrometric residual is clearly caused by CCD physical stress. 
+Additionally, this indicates that we should expect to see this pattern manifest in the PSF size residuals.
+Indeed, the low-z bins in Figure \ref{fig:z4_bins} show an emerging pattern that resembles the CCD stress pattern.
+We expect this to become the dominant residual effect once the camera is achieving better focus levels.
+
+
+\section{Early Rubin PSF Performance}
+
+In this TechNote, we present PSF residuals from the commissioning campaign with LSSTCam. 
+The data used for this work are the $2,248$ single visit image PSF measurements on visits from June 4, 2025 through August 18, 2025.
+They were processed in the Week $33$ DRP run at USDF at SLAC.
+
+First, we select stars from the visit images using the flag \texttt{extendedness} $=0$ and \texttt{calib\_psf\_used} $=1$, filtering down to stars that were used to fit the PSF and stars that meet a cut for roundness. 
+We also apply a magnitude cut, excluding stars fainter than $m_{AB}=20$; we note that $m_{AB}$ is estimated from the stars' calibrated flux measurement, and is not a perfectly calibrated magnitude.
+However, we use this measurement primarily as an effective signal-to-noise cut, so the accuracy of the magnitude conversion is not important to the scope of this work.
+We then calculate PSF residuals for each star in each visit image contained in the collection.
+After those cuts are applied, the total number of stars included in the analysis is $5.8\times10^6$. 
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/T_resids.pdf}
+    \caption{Median PSF size residuals. \textit{Left:} Median $\delta T$ residual. \textit{Right:} Median $\delta T/T$ residual. Coherent patterns are visible in all CCDs in $\delta T$; ITL sensors show the ``ITL blob'' behavior, while E2V sensors show linear variations. The model-subtracted residuals show that the PSF model incorporates the linear variations in E2V sensors but struggles fitting the ITL blobs, resulting in the concentric ring pattern seen in ITL sensor residuals.}
+    \label{fig:ffp_T_resids}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/e_resids.pdf}
+    \caption{Median PSF shape residuals. \textit{Left:} $\delta e_1$  residual. \textit{Right:} $\delta e_2$  residual. Ellipticity residuals show less conherent patterns and have a smaller overall magnitude. Effects from vignetting can be seen on the edges of the outermost CCDs. }
+    \label{fig:ffp_e_resids}
+\end{figure}
+
+Figures \ref{fig:ffp_T_resids} and \ref{fig:ffp_e_resids} show the unitless residuals $\delta T/T$, $\delta e_1$, and $\delta e_2$ in the LSSTCam focal plane. 
+All four plots are normalized to the same scale, $\pm 0.01$.
+The residual maps contain concentric ring features along the edge detectors.
+This behavior is expected from vignetting of the light entering the telescope.
+Besides this vignetting, there are not coherent residuals in the $\delta e_i$ residual maps; however, the PSF size residuals show some interesting behaviors. 
+
+Comparing against the LSST Focal Plane Engineering map \citep{CTN-001}, we see clearly that there is a distinction between the behaviors of the E2V and ITL type sensors. 
+While E2V sensors do not display a coherent noise pattern, the ITL sensors show a concentric ring pattern we refer to as the ``ITL blobs.''
+This behavior was seen in the LSST Commissioning Camera (ComCam) data, but the cause was not known.
+To reduce this residual in ComCam, the PSF model was increased to a fourth-order polynomial, which removed most of the pattern.
+However, we would ideally like to learn the physical cause of this residual and remove it directly.
+
+
+The left panel of \ref{fig:ffp_T_resids}, we show our model-agnostic median PSF size residual. 
+In this image, we see PSF residual patterns in not only the ITL sensors, but in the E2V sensors as well, although the patterns remain distinct. 
+Looking at this image, we identified a potential cause for the PSF residuals: height offsets on the LSSTCam CCDs.
+The round features on the ITL sensors show that there is an overall trend in PSF size whose shape could not be captured by the second order Piff model.
+
+A side-by-side comparison of the PSF residual map with measured heights of the CCDs taken in lab (see Figure \ref{fig:comparison_ffp}) shows an undeniable correlation between the two measurements.
+The round features on ITL sensors trace not only the size but also the magnitude of the height variations. 
+The E2V sensors show tilts in the same directions as the gradients in size residuals do.
+
+To show the correlation directly, we additionally took the height map and re-gridded it onto the same pixel map as the $\delta T$ residuals. Figure \ref{fig:correlation} plots the correlation between PSF size offset and detector height interpolated to star position. 
+It is clear that correlation between the two variables is strong.
+We conclude that the CCD height map is certainly causing some residuals in LSST PSFs.
+We test different methods of incorporating the height map into PSF modeling in Section \ref{sec:zmodel}.
+
+While investigating how the residual changes as a function of focus, we constructed images of PSF residuals divided into bins of $z_4$, used as a proxy for overall focus as discussed in Section \ref{sec:known-effects}. 
+Figures \ref{fig:z4_bins} show the $z_4$-binned PSF size residuals in stacked ITL sensors.
+When focus is closer to ideal (panels 3-4), the blob pattern begins to fade into a pattern that looks a little more square, with a clear midline and inner / outer boxes.
+The square residual pattern bears distinct resemblance to the astrometric residual divergence map shown in Figure \ref{fig:stress_comparison}, which represented the expected residual from the CCD stress pattern.
+We conclude that physical stress from the CCD mounts is also causing some PSF residuals in LSSTCam observations, though it is sub-dominant to the height residuals at the moment.
+When we are achieving optimal focus, we expect the CCD stress pattern residual to dominate.
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/Ts_Heights_Comparison.pdf}
+    \caption{Side-by-side comparison of $\delta T$ residuals and the focal plane height map. The correlation between the two maps is distinct. Detectors 16 (ITL) and 96 (E2V) are highlighted in green as strong examples of height map - PSF residual correlations.}
+    \label{fig:comparison_ffp}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/correlation.png}
+    \caption{Correlation between PSF size residuals and CCD height offset $\delta z$ interpolated onto the same grid. A strong correlation is clear.}
+    \label{fig:correlation}
+\end{figure}
+
+
+\section{Incorporating Height into PSF Modeling}\label{sec:zmodel}
+
+\subsection{Methods}
+
+To mitigate the impact of CCD non-flatness in PSFs, we incorporated height offsets into the PSF model.
+We used the lab test data discussed in Section \ref{sec:known-effects} as an input map.
+For each star in the \texttt{PIFF} selected catalog, in addition to appending the star's position as properties to be used for PSF modeling, we interpolated the height map data to the position of the star on the focal plane and appended an additional model property, $dz$. 
+We perform the interpolation using \texttt{SCIPY}\footnote{https://scipy.org/} KNN algorithm with 3 neighbors.
+
+
+The current model fit by \texttt{PIFF} in the \textit{LSST} image processing pipeline fits a second order polynomial in detector $x,y$ coordinates:
+\begin{equation}\label{eq:pipeline_piff_model}
+    f = f_0 + A x + B x^2 + C y + D y^2 + E x y
+\end{equation}
+
+Our modified version instead fits the model
+\begin{equation}\label{eq:dz_piff_model}
+    f = f_0 + A x + B x^2 + B y + D y^2 + E dz + G dz^2 
+    + H x y + J x dz + K y dz
+\end{equation}
+
+We reprocessed the visits in the dataset discussed in Section \ref{sec:psf} using our new \texttt{PIFF} model including the height parameter.
+After determining the PSFs, we also ran our new dataset through the single-visit characterization pipeline tasks, to recover the same visit-level object catalog used in Section \ref{sec:psf}, but with measurements from our new model.
+We examine the results of applying our new PSF model in the following section.
+
+\subsection{Results}
+
+Figure \ref{fig:dz_ffp_resids} shows the PSF model $\delta T/T$ residuals for the $dz$-inclusive \texttt{PIFF} model in two detectors that showed severe height offsets: detector 16 (ITL) and detector 96 (E2V).
+The two detectors shown here are outlined in green in Figure \ref{fig:ffp_T_resids} for comparison.
+We also include Figure \ref{fig:dm_ffp_resids} for reference, to highlight the change in residuals from inclusion of the height parameter in the PSF model. 
+There is little change in the E2V detector; because the E2V height offsets are linear, the x-y plane PSF fitting model was already incorporating the height effects well enough.
+In the ITL sensor, we see a clear reduction of the size residual that was observed previously. 
+Note that the scale of this figure is the same as in Figure \ref{fig:ffp_T_resids}.
+Comparing Figures \ref{fig:dm_ffp_resids} and \ref{fig:dz_ffp_resids}, the patterns are certainly fainter in the new model residuals.
+
+However, it is clear that incorporating heights into the PSF model does not completely remove the PSF residuals. 
+Some residual pattern remains in the ITl sensors, though we note that its shape has changed slightly from the ``ITL blobs'' previously seen; the residual's overall shape is more square, and bears more resemblance to the expected residual from physical stress on the CCDs.
+This shows that when the impact of CCD heights is removed, physical stress is the dominant cause of the remaining PSF residuals.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/dT_T_reg.pdf}
+    \caption{Median Piff PSF residual $\delta T/T$ in detectors 96 and 16, using the pipeline Piff (model given by equation \ref{eq:pipeline_piff_model}).}
+    \label{fig:dm_ffp_resids}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/dT_T_2ord.pdf}
+    \caption{Median Piff PSF residual $\delta T/T$ in detectors 96 and 16, using the height-inclusive Piff (model given by equation \ref{eq:dz_piff_model}).}
+    \label{fig:dz_ffp_resids}
+\end{figure}
+
+\section{Summary and Discussion}\label{sec:summary}
+
+In this work, we examine PSF residuals from commissioning data with LSSTCam and find significant residual trends that we believe to be caused by CCD non-flatness.
+Comparing residual maps with maps of CCD height offsets measured in lab, we identify a significant correlation between PSF size residuals and CCD heights.
+We further used spot simulations with LSST optics to predict the impact of focal plane height perturbations on the PSF FWHM, and found that the change in FWHM as a function of $z$ is only small in a range of height offsets that is about half the actual focal plane height RMS.
+We conclude that the actual FWHM(z) we are observing is larger than expected, because the magnitude of CCD non-flatness \textit{forces} the relationship into the linear regime of the quadratic FWHM(z) function.
+
+We address this new detector systematic by including height offsets as an additional parameter in PSF model fitting. 
+Adapting the current \texttt{PIFF} implementation in the DM pipelines, we expand the model to include $dz$ as an additional parameter for fitting.
+We specify $dz$ to be interpolated out to second order.
+The magnitude of the height effect in the ITL sensors is greatly reduced, but some residual pattern is still visible.
+However, we note that the remaining residual has a slightly different shape than the pre-$xyz$-\texttt{PIFF} fit residual did, and strongly resembles the residual pattern we expect from physical stress on the CCDs.
+This conclusion is further supported by the emergence of the physical stress pattern when the camera is in better focus, so the height effects are significantly reduced.
+
+Accounting for the physical stress pattern in the CCDs will not be accomplished through PSF modeling, but through implementation of a local WCS in the images. 
+The physical stress of the CCD mount causes an electrostatic effect, which then impacts the effective pixel sizes on the images, resulting in the residuals we observe in PSFs and photometry.
+Using a local WCS will implicitly include the physical stress pattern; we expect this residual to be removed after this change is implemented.
+
+Finally, we note that the Adaptive Optics System (AOS) team has also been seeing the impact of CCD non-flatness in their Rapid Analysis images. 
+The AOS system at present does not take into account any height offsets in the focal plane, nor does it account for the physical shapes of the wavefront sensors themselves.
+The AOS team are currently working on including height offsets in the wavefront estimation, and we anticipate seeing improvement in the camera's focus performance as a whole from this development.
+
+PSF errors are a limiting factor on the precision of high-priority \textit{Rubin} science cases like weak gravitational lensing. 
+The LSST-DESC Science Requirements Document \cite{2018arxiv180901669T} sets a requirement for LSST Year 1 data to achieve systematic uncertainty $\leq 0.4\%$ in the PSF.
+For Year 10, this requirement becomes even tighter; PSF systematic uncertainty must be $\leq 0.1\%$.
+
+To ensure \textit{Rubin} achieves all the science goals it has been designed for, it is essential that all sources of systematic error like the PSF are accounted for and mitigated to the extent possible. 
+By closely analyzing the PSF residuals, we identify potential sources of error for mitigation and work towards pushing \textit{LSST} towards its ideal scientific precision. 
 
 \appendix
 

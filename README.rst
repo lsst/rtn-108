@@ -14,7 +14,7 @@ Modeling the point-spread function (PSF) precisely is essential for many-- if no
 
 Links
 =====
-
+- PDF drafts: https://github.com/kklaliotis/rtn-108/blob/main/rtn_108.pdf
 - Live drafts: https://rtn-108.lsst.io
 - GitHub: https://github.com/lsst/rtn-108
 
